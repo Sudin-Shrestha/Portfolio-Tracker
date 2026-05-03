@@ -1,21 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { PortfolioRow, PortfolioState, TrackerType } from '../types';
 import { downloadWorkbook, sampleState } from '../utils/excel';
+import { db } from '../firebase';
+import { useAuth } from './useAuth';
 
-const STORAGE_KEY = 'portfolio-tracker:state-v1';
-
-const loadInitialState = (): PortfolioState => {
-  if (typeof window === 'undefined') return sampleState;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return sampleState;
-    const parsed = JSON.parse(raw) as PortfolioState;
-    if (!parsed.crypto || !parsed.nepal) return sampleState;
-    return parsed;
-  } catch {
-    return sampleState;
-  }
-};
+const emptyState: PortfolioState = { crypto: [], nepal: [] };
 
 const newRow = (tracker: TrackerType): PortfolioRow => ({
   id: `${tracker}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -26,20 +16,55 @@ const newRow = (tracker: TrackerType): PortfolioRow => ({
 });
 
 export const usePortfolio = () => {
-  const [state, setState] = useState<PortfolioState>(loadInitialState);
+  const { user } = useAuth();
+  const [state, setState] = useState<PortfolioState>(emptyState);
+  const [isLoaded, setIsLoaded] = useState(false);
   const isFirstRender = useRef(true);
 
+  // Load from Firebase on mount or user change
+  useEffect(() => {
+    if (!user) return;
+    
+    let isMounted = true;
+    getDoc(doc(db, 'portfolios', user.uid)).then((docSnap) => {
+      if (!isMounted) return;
+      if (docSnap.exists()) {
+        const data = docSnap.data() as PortfolioState;
+        if (data.crypto && data.nepal) {
+           setState(data);
+        } else {
+           setState(emptyState);
+        }
+      } else {
+        setState(emptyState);
+      }
+      setIsLoaded(true);
+    }).catch((err) => {
+       console.error("Failed to load portfolio", err);
+       setIsLoaded(true); // fall back to empty state
+    });
+
+    return () => { isMounted = false; };
+  }, [user]);
+
+  // Sync to Firebase on local state changes
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
       return;
     }
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {
-      // ignore quota errors
-    }
-  }, [state]);
+    // Only attempt to save if we've successfully loaded the remote state first
+    if (!isLoaded || !user) return;
+
+    // Firestore crashes if an object contains 'undefined'. 
+    // JSON.stringify drops 'undefined' keys automatically, matching localStorage behavior.
+    const cleanState = JSON.parse(JSON.stringify(state));
+
+    setDoc(doc(db, 'portfolios', user.uid), cleanState).catch((err) => {
+      console.error(err);
+      alert("Firebase Error (Portfolios): " + err.message);
+    });
+  }, [state, isLoaded, user]);
 
   const addRow = useCallback((tracker: TrackerType) => {
     setState((prev) => ({ ...prev, [tracker]: [...prev[tracker], newRow(tracker)] }));
@@ -73,6 +98,7 @@ export const usePortfolio = () => {
     }));
   }, []);
 
+  // For testing, users can press "reset sample" to populate Firebase with dummy data instantly
   const resetSample = useCallback(() => setState(sampleState), []);
 
   const exportToExcel = useCallback(

@@ -28,8 +28,19 @@ export interface PortfolioTotals {
 
 export type Theme = 'light' | 'dark';
 
-export type Page = 'portfolio' | 'gold';
+export type Page = 'home' | 'portfolio' | 'gold' | 'expense' | 'analytics';
 
+export type TransactionType = 'income' | 'expense';
+
+export interface Transaction {
+  id: string;
+  type: TransactionType;
+  description: string;
+  amount: number;
+  category: string;
+  date: string;
+  notes?: string;
+}
 export interface Candle {
   time: number;
   open: number;

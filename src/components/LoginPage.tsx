@@ -4,7 +4,7 @@ import { Theme } from '../types';
 interface LoginPageProps {
   theme: Theme;
   onToggleTheme: () => void;
-  onLogin: (email: string, password: string) => { ok: true } | { ok: false; error: string };
+  onLogin: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
 export const LoginPage = ({ theme, onToggleTheme, onLogin }: LoginPageProps) => {
@@ -13,14 +13,18 @@ export const LoginPage = ({ theme, onToggleTheme, onLogin }: LoginPageProps) => 
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     if (!email || !password) {
       setError('Email and password are required.');
       return;
     }
-    const result = onLogin(email, password);
+    setIsLoading(true);
+    const result = await onLogin(email, password);
+    setIsLoading(false);
     if (!result.ok) setError(result.error);
   };
 
@@ -85,12 +89,12 @@ export const LoginPage = ({ theme, onToggleTheme, onLogin }: LoginPageProps) => 
             </div>
           )}
 
-          <button type="submit" className="button login-submit">
-            Sign in
+          <button type="submit" className="button login-submit" disabled={isLoading}>
+            {isLoading ? 'Signing in...' : 'Sign in'}
           </button>
 
           <p className="muted small login-hint">
-            Session token is stored locally and expires automatically after 24 hours.
+            Ensure you have created a user account in your Firebase Auth console.
           </p>
         </form>
       </div>

@@ -1,11 +1,10 @@
 import { ChangeEvent } from 'react';
-import { Page, Theme, TrackerType } from '../types';
+import { NavLink, useLocation, Link } from 'react-router-dom';
+import { Theme, TrackerType } from '../types';
 
 interface HeaderProps {
-  page: Page;
   tracker: TrackerType;
   theme: Theme;
-  onPageChange: (page: Page) => void;
   onTrackerChange: (tracker: TrackerType) => void;
   onToggleTheme: () => void;
   onImport: (file: File) => void;
@@ -13,9 +12,11 @@ interface HeaderProps {
   onLogout: () => void;
 }
 
-const pageTabs: { value: Page; label: string }[] = [
-  { value: 'portfolio', label: 'Portfolio' },
-  { value: 'gold', label: 'Gold (XAU/USD)' },
+const pageTabs = [
+  { value: 'portfolio', path: '/portfolio', label: 'Portfolio' },
+  { value: 'expense', path: '/expense', label: 'Transactions' },
+  { value: 'analytics', path: '/analytics', label: 'Analytics' },
+  { value: 'gold', path: '/gold', label: 'Gold (XAU)' },
 ];
 
 const trackerTabs: { value: TrackerType; label: string }[] = [
@@ -24,16 +25,17 @@ const trackerTabs: { value: TrackerType; label: string }[] = [
 ];
 
 export const Header = ({
-  page,
   tracker,
   theme,
-  onPageChange,
   onTrackerChange,
   onToggleTheme,
   onImport,
   onExport,
   onLogout,
 }: HeaderProps) => {
+  const location = useLocation();
+  const page = location.pathname.replace('/', '') || 'home';
+  
   const handleFile = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) onImport(file);
@@ -49,25 +51,41 @@ export const Header = ({
         <p className="subtitle">
           {isPortfolio
             ? 'Crypto + NEPSE positions, calculated locally and synced to an Excel workbook.'
+            : page === 'expense' 
+            ? 'Log your Income and Expenses safely in the cloud.'
+            : page === 'analytics'
+            ? 'Visual breakdowns of your monthly financial flows.'
             : 'Live spot-gold candlesticks via Binance PAXG/USDT.'}
         </p>
       </div>
 
       <div className="header-actions">
-        <div className="tabs" role="tablist" aria-label="Page">
-          {pageTabs.map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              role="tab"
-              aria-selected={page === tab.value}
-              className={`tab ${page === tab.value ? 'tab--active' : ''}`}
-              onClick={() => onPageChange(tab.value)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {page !== 'home' && (
+          <Link
+            to="/"
+            className="button button--ghost"
+            style={{ marginRight: '0.5rem', textDecoration: 'none' }}
+          >
+            🏠 Home
+          </Link>
+        )}
+
+        {page !== 'home' && (
+          <div className="tabs" role="tablist" aria-label="Page">
+            {pageTabs.map((tab) => (
+              <NavLink
+                key={tab.value}
+                to={tab.path}
+                role="tab"
+                aria-selected={page === tab.value}
+                className={({ isActive }) => `tab ${isActive ? 'tab--active' : ''}`}
+                style={{ textDecoration: 'none' }}
+              >
+                {tab.label}
+              </NavLink>
+            ))}
+          </div>
+        )}
 
         {isPortfolio && (
           <div className="tabs" role="tablist" aria-label="Portfolio tracker">

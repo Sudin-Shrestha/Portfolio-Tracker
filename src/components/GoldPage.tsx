@@ -42,6 +42,7 @@ export const GoldPage = () => {
     }
     if (perm === 'granted') {
       setAlertsEnabled(true);
+      await alert.sendTestNotification();
     }
   };
 
@@ -92,13 +93,24 @@ export const GoldPage = () => {
             <strong>3-green-candle alert</strong>
             <p className="muted small" style={{ margin: '4px 0 0' }}>
               {!alert.supported
-                ? 'Browser notifications not supported here.'
+                ? alert.unsupportedReason
                 : alertsEnabled
                 ? `Watching closed 15M candles. Current green streak: ${alert.streak}.`
                 : alert.permission === 'denied'
                 ? 'Notifications are blocked in browser settings.'
                 : 'Enable to get a desktop ping when 3 green 15M candles close in a row.'}
             </p>
+            {alert.lastAlert?.close !== undefined && (
+              <p className="small" style={{ margin: '6px 0 0' }}>
+                Last alert: {alert.lastAlert.streak} green candles closed at USD{' '}
+                {formatUsd(alert.lastAlert.close)} · {alert.lastAlert.message}
+              </p>
+            )}
+            {alert.lastTest && (
+              <p className="small" style={{ margin: '6px 0 0' }}>
+                Test: {alert.lastTest.message}
+              </p>
+            )}
           </div>
           <div className="section-actions">
             {alertsEnabled && alert.permission === 'granted' && (

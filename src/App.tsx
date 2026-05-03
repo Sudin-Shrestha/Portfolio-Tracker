@@ -1,10 +1,14 @@
 import { useCallback, useMemo, useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Header } from './components/Header';
 import { SummaryCards } from './components/SummaryCards';
 import { PortfolioTable } from './components/PortfolioTable';
 import { AssetChart } from './components/AssetChart';
+import { HomePage } from './components/HomePage';
+import { ExpenseTracker } from './components/ExpenseTracker';
 import { GoldPage } from './components/GoldPage';
 import { LoginPage } from './components/LoginPage';
+import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { usePortfolio } from './hooks/usePortfolio';
 import { useTheme } from './hooks/useTheme';
 import { useCryptoPrices } from './hooks/useCryptoPrices';
@@ -12,7 +16,7 @@ import { useNepsePrices } from './hooks/useNepsePrices';
 import { useAuth } from './hooks/useAuth';
 import { readWorkbookFromFile } from './utils/excel';
 import { computeTotals } from './utils/format';
-import { Page, PortfolioRow, Theme, TrackerType } from './types';
+import { PortfolioRow, Theme, TrackerType } from './types';
 
 type Status = { kind: 'idle' } | { kind: 'info' | 'error' | 'success'; message: string };
 
@@ -28,7 +32,6 @@ interface AuthenticatedAppProps {
 }
 
 const AuthenticatedApp = ({ theme, onToggleTheme, onLogout }: AuthenticatedAppProps) => {
-  const [page, setPage] = useState<Page>('portfolio');
   const [tracker, setTracker] = useState<TrackerType>('crypto');
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const portfolio = usePortfolio();
@@ -69,11 +72,15 @@ const AuthenticatedApp = ({ theme, onToggleTheme, onLogout }: AuthenticatedAppPr
       ]
         .filter(Boolean)
         .join(', ');
+      
+      const successMsg = sheets ? `Imported ${sheets} rows.` : 'No matching sheets found in file.';
+      alert("Import Success: " + successMsg);
       setStatus({
         kind: 'success',
-        message: sheets ? `Imported ${sheets} rows.` : 'No matching sheets found in file.',
+        message: successMsg,
       });
-    } catch (err) {
+    } catch (err: any) {
+      alert("Import Failed: " + err.message);
       setStatus({
         kind: 'error',
         message: err instanceof Error ? err.message : 'Failed to read file',
@@ -128,10 +135,8 @@ const AuthenticatedApp = ({ theme, onToggleTheme, onLogout }: AuthenticatedAppPr
   return (
     <div className="container">
       <Header
-        page={page}
         tracker={tracker}
         theme={theme}
-        onPageChange={setPage}
         onTrackerChange={setTracker}
         onToggleTheme={onToggleTheme}
         onImport={handleImport}
@@ -139,101 +144,109 @@ const AuthenticatedApp = ({ theme, onToggleTheme, onLogout }: AuthenticatedAppPr
         onLogout={onLogout}
       />
 
-      {page === 'portfolio' && status.kind !== 'idle' && (
-        <div className={`banner banner--${status.kind}`} role="status">
-          <span>{status.message}</span>
-          <button
-            type="button"
-            className="banner-close"
-            aria-label="Dismiss"
-            onClick={() => setStatus({ kind: 'idle' })}
-          >
-            ×
-          </button>
-        </div>
-      )}
-
-      {page === 'portfolio' ? (
-        <>
-          <SummaryCards totals={totals} currencyLabel={CURRENCY[tracker]} />
-
-          <section className="card">
-            <div className="section-header">
-              <div>
-                <h2>{tracker === 'crypto' ? 'Crypto Portfolio' : 'Nepal Share Market (NEPSE)'}</h2>
-                <p className="muted">
-                  {tracker === 'crypto'
-                    ? 'Add your coins, then refresh prices from CoinGecko.'
-                    : 'Validate via merolagani.com (top-turnover stocks only) or edit prices manually.'}
-                </p>
-              </div>
-              <div className="section-actions">
-                <button type="button" className="button" onClick={() => portfolio.addRow(tracker)}>
-                  + Add row
-                </button>
-                {tracker === 'crypto' && (
-                  <button
-                    type="button"
-                    className="button button--ghost"
-                    onClick={handleRefreshPrices}
-                    disabled={cryptoPrices.loading}
-                  >
-                    {cryptoPrices.loading ? 'Refreshing…' : 'Refresh live prices'}
-                  </button>
-                )}
-                {tracker === 'nepal' && (
-                  <button
-                    type="button"
-                    className="button button--ghost"
-                    onClick={handleRefreshNepse}
-                    disabled={nepsePrices.loading}
-                  >
-                    {nepsePrices.loading ? 'Validating…' : 'Validate via merolagani'}
-                  </button>
-                )}
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        
+        <Route path="/portfolio" element={
+          <>
+            {status.kind !== 'idle' && (
+              <div className={`banner banner--${status.kind}`} role="status">
+                <span>{status.message}</span>
                 <button
                   type="button"
-                  className="button button--ghost"
-                  onClick={portfolio.resetSample}
+                  className="banner-close"
+                  aria-label="Dismiss"
+                  onClick={() => setStatus({ kind: 'idle' })}
                 >
-                  Reset sample
+                  ×
                 </button>
               </div>
-            </div>
-
-            {tracker === 'crypto' && lastUpdatedLabel && (
-              <p className="muted small">Last live refresh at {lastUpdatedLabel}</p>
             )}
-            {tracker === 'nepal' && nepseLastUpdatedLabel && (
-              <p className="muted small">Last NEPSE validation at {nepseLastUpdatedLabel}</p>
-            )}
+            <SummaryCards totals={totals} currencyLabel={CURRENCY[tracker]} />
 
-            <PortfolioTable
-              tracker={tracker}
-              rows={rows}
-              currencyLabel={CURRENCY[tracker]}
-              onChange={(id, patch) => portfolio.updateRow(tracker, id, patch)}
-              onDelete={(id) => portfolio.deleteRow(tracker, id)}
-            />
-          </section>
+            <section className="card">
+              <div className="section-header">
+                <div>
+                  <h2>{tracker === 'crypto' ? 'Crypto Portfolio' : 'Nepal Share Market (NEPSE)'}</h2>
+                  <p className="muted">
+                    {tracker === 'crypto'
+                      ? 'Add your coins, then refresh prices from CoinGecko.'
+                      : 'Validate via merolagani.com (top-turnover stocks only) or edit prices manually.'}
+                  </p>
+                </div>
+                <div className="section-actions">
+                  <button type="button" className="button" onClick={() => portfolio.addRow(tracker)}>
+                    + Add row
+                  </button>
+                  {tracker === 'crypto' && (
+                    <button
+                      type="button"
+                      className="button button--ghost"
+                      onClick={handleRefreshPrices}
+                      disabled={cryptoPrices.loading}
+                    >
+                      {cryptoPrices.loading ? 'Refreshing…' : 'Refresh live prices'}
+                    </button>
+                  )}
+                  {tracker === 'nepal' && (
+                    <button
+                      type="button"
+                      className="button button--ghost"
+                      onClick={handleRefreshNepse}
+                      disabled={nepsePrices.loading}
+                    >
+                      {nepsePrices.loading ? 'Validating…' : 'Validate via merolagani'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="button button--ghost"
+                    onClick={portfolio.resetSample}
+                  >
+                    Reset sample
+                  </button>
+                </div>
+              </div>
 
-          <section className="card">
-            <div className="section-header">
-              <h2>Allocation</h2>
-              <p className="muted">Top holdings by current value.</p>
-            </div>
-            <AssetChart rows={rows} currencyLabel={CURRENCY[tracker]} />
-          </section>
+              {tracker === 'crypto' && lastUpdatedLabel && (
+                <p className="muted small">Last live refresh at {lastUpdatedLabel}</p>
+              )}
+              {tracker === 'nepal' && nepseLastUpdatedLabel && (
+                <p className="muted small">Last NEPSE validation at {nepseLastUpdatedLabel}</p>
+              )}
 
-          <footer className="footer muted small">
-            Data is stored in your browser and exported on demand to <code>portfolio.xlsx</code>.
-            Sheets: <code>Crypto</code>, <code>NEPSE</code>. Columns: Asset Name, Quantity, Buy
-            Price, Current Price, Total Value, Profit/Loss, CoinGecko ID.
-          </footer>
-        </>
-      ) : (
-        <GoldPage />
-      )}
+              <PortfolioTable
+                tracker={tracker}
+                rows={rows}
+                currencyLabel={CURRENCY[tracker]}
+                onChange={(id, patch) => portfolio.updateRow(tracker, id, patch)}
+                onDelete={(id) => portfolio.deleteRow(tracker, id)}
+              />
+            </section>
+
+            <section className="card">
+              <div className="section-header">
+                <h2>Allocation</h2>
+                <p className="muted">Top holdings by current value.</p>
+              </div>
+              <AssetChart rows={rows} currencyLabel={CURRENCY[tracker]} />
+            </section>
+
+            <footer className="footer muted small">
+              Data is stored securely in Firebase and exported on demand to <code>portfolio.xlsx</code>.
+              Sheets: <code>Crypto</code>, <code>NEPSE</code>. Columns: Asset Name, Quantity, Buy
+              Price, Current Price, Total Value, Profit/Loss, CoinGecko ID.
+            </footer>
+          </>
+        } />
+        
+        <Route path="/expense" element={<ExpenseTracker />} />
+        <Route path="/analytics" element={<AnalyticsDashboard />} />
+        <Route path="/gold" element={<GoldPage />} />
+        
+        {/* Redirect unknown routes back to home */}
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
     </div>
   );
 };
@@ -242,11 +255,23 @@ const App = () => {
   const { theme, toggleTheme } = useTheme();
   const auth = useAuth();
 
+  if (auth.loading) {
+    return (
+      <div className="container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <p className="muted">Loading user session...</p>
+      </div>
+    );
+  }
+
   if (!auth.isAuthenticated) {
     return <LoginPage theme={theme} onToggleTheme={toggleTheme} onLogin={auth.login} />;
   }
 
-  return <AuthenticatedApp theme={theme} onToggleTheme={toggleTheme} onLogout={auth.logout} />;
+  return (
+    <BrowserRouter>
+      <AuthenticatedApp theme={theme} onToggleTheme={toggleTheme} onLogout={auth.logout} />
+    </BrowserRouter>
+  );
 };
 
 export default App;
