@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 import { Transaction } from '../types';
@@ -28,24 +28,30 @@ export const AnalyticsDashboard = () => {
     const q = query(
       collection(db, 'expenses'),
       where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc'),
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data: Transaction[] = snapshot.docs.map((doc) => {
-        const d = doc.data();
-        return {
-          id: doc.id,
-          type: d.type || 'expense',
-          description: d.description,
-          amount: d.amount,
-          category: d.category,
-          date: d.date,
-        } as Transaction;
-      });
-      setTransactions(data);
-      setIsLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const data: Transaction[] = snapshot.docs.map((doc) => {
+          const d = doc.data();
+          return {
+            id: doc.id,
+            type: d.type || 'expense',
+            description: d.description,
+            amount: d.amount,
+            category: d.category,
+            date: d.date,
+          } as Transaction;
+        });
+        setTransactions(data);
+        setIsLoading(false);
+      },
+      (error) => {
+        console.error('Error fetching analytics transactions:', error);
+        setIsLoading(false);
+      },
+    );
 
     return () => unsubscribe();
   }, [user]);

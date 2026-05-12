@@ -71,9 +71,10 @@ export const GoldPage = () => {
       <section className="card">
         <div className="section-header">
           <div>
-            <h2>Gold (XAU/USD) · 15M</h2>
+            <h2>Gold (PAXG/USDT) · 15M</h2>
             <p className="muted">
               PAXG/USDT 15-minute candles from Binance, polled every {POLL_MS / 1000}s.
+              XAU spot shown separately for reference.
             </p>
           </div>
           <div className="section-actions">
@@ -198,7 +199,7 @@ export const GoldPage = () => {
 
         {loading && candles.length === 0 ? (
           <div className="empty-state">
-            <p className="muted">Loading XAU/USD candles…</p>
+            <p className="muted">Loading PAXG/USDT candles…</p>
           </div>
         ) : candles.length === 0 ? (
           <div className="empty-state">

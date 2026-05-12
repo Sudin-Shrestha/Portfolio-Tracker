@@ -9,6 +9,8 @@ import { ExpenseTracker } from './components/ExpenseTracker';
 import { GoldPage } from './components/GoldPage';
 import { LoginPage } from './components/LoginPage';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
+import { TasksPage } from './components/tasks/TasksPage';
+import { TaskStats } from './components/dashboard/TaskStats';
 import { usePortfolio } from './hooks/usePortfolio';
 import { useTheme } from './hooks/useTheme';
 import { useCryptoPrices } from './hooks/useCryptoPrices';
@@ -240,6 +242,7 @@ const AuthenticatedApp = ({ theme, onToggleTheme, onLogout }: AuthenticatedAppPr
           </>
         } />
         
+        <Route path="/tasks/*" element={<TasksPage />} />
         <Route path="/expense" element={<ExpenseTracker />} />
         <Route path="/analytics" element={<AnalyticsDashboard />} />
         <Route path="/gold" element={<GoldPage />} />

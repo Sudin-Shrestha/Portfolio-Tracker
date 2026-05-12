@@ -14,6 +14,7 @@ interface HeaderProps {
 
 const pageTabs = [
   { value: 'portfolio', path: '/portfolio', label: 'Portfolio' },
+  { value: 'tasks', path: '/tasks', label: 'Tasks' },
   { value: 'expense', path: '/expense', label: 'Transactions' },
   { value: 'analytics', path: '/analytics', label: 'Analytics' },
   { value: 'gold', path: '/gold', label: 'Gold (XAU)' },
@@ -51,6 +52,8 @@ export const Header = ({
         <p className="subtitle">
           {isPortfolio
             ? 'Crypto + NEPSE positions, calculated locally and synced to an Excel workbook.'
+            : page.startsWith('tasks')
+            ? 'Kanban-style task boards to manage your productivity.'
             : page === 'expense' 
             ? 'Log your Income and Expenses safely in the cloud.'
             : page === 'analytics'
