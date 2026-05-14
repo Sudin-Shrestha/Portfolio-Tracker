@@ -16,7 +16,8 @@ const EXPENSE_CATEGORIES = [
   'Grocery', 'Rent', 'Gym', 'Car Insurance', 'Health Insurance', 'Latitude',
   'Food', 'IT Exp', 'Astha', 'Nepal', 'Shopping', 'Eating Out', 'Fuel',
   'Sim Bill', 'Internet Bill', 'Electricity Bill', 'Entertainment',
-  'Subscriptions', 'Medical/Pharmacy', 'Personal Care', 'Other',
+  'Subscriptions', 'Medical/Pharmacy', 'Personal Care',
+  'Crypto Investment', 'Stock Investment', 'Other Investment', 'Other',
 ];
 
 const INCOME_CATEGORIES = ['Spas', 'Kentford', 'Other'];
