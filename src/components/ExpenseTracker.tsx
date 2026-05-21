@@ -11,6 +11,7 @@ import {
 import { db } from '../firebase';
 import { Transaction, TransactionType } from '../types';
 import { useAuth } from '../hooks/useAuth';
+import { TransactionExportMenu } from './TransactionExportMenu';
 
 const EXPENSE_CATEGORIES = [
   'Grocery', 'Rent', 'Gym', 'Car Insurance', 'Health Insurance', 'Latitude',
@@ -203,13 +204,16 @@ export const ExpenseTracker = () => {
             {filteredTotals.net < 0 ? '-' : ''}${formatAmount(Math.abs(filteredTotals.net))}
           </span>
         </div>
-        <button
-          type="button"
-          className="button tx-add-button"
-          onClick={() => setFormOpen((o) => !o)}
-        >
-          {formOpen ? '× Close' : '+ New Transaction'}
-        </button>
+        <div className="tx-summary-actions">
+          <TransactionExportMenu transactions={transactions} variant="ghost" />
+          <button
+            type="button"
+            className="button tx-add-button"
+            onClick={() => setFormOpen((o) => !o)}
+          >
+            {formOpen ? '× Close' : '+ New Transaction'}
+          </button>
+        </div>
       </div>
 
       {/* Add form */}

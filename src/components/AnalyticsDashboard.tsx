@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 import { Transaction } from '../types';
 import { formatNumber } from '../utils/format';
+import { TransactionExportMenu } from './TransactionExportMenu';
 
 const PALETTE = ['#6366f1', '#22c55e', '#f59e0b', '#ec4899', '#14b8a6', '#3b82f6', '#8b5cf6', '#ef4444'];
 
@@ -194,20 +195,27 @@ export const AnalyticsDashboard = () => {
               : `${periodLabel} · ${counts.total} transaction${counts.total === 1 ? '' : 's'} this month.`}
           </p>
         </div>
-        <div className="analytics-month-filter">
-          <label className="tx-filter-label" htmlFor="month-filter">Period</label>
-          <select
-            id="month-filter"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-          >
-            <option value="all">All time</option>
-            {[...monthlyHistory].reverse().map((m) => (
-              <option key={m.key} value={m.key}>
-                {monthLongLabel(m.key)}
-              </option>
-            ))}
-          </select>
+        <div className="analytics-hero-actions">
+          <div className="analytics-month-filter">
+            <label className="tx-filter-label" htmlFor="month-filter">Period</label>
+            <select
+              id="month-filter"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            >
+              <option value="all">All time</option>
+              {[...monthlyHistory].reverse().map((m) => (
+                <option key={m.key} value={m.key}>
+                  {monthLongLabel(m.key)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <TransactionExportMenu
+            transactions={transactions}
+            initialMonth={selectedMonth}
+            label="Export for AI"
+          />
         </div>
       </div>
 

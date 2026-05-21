@@ -39,7 +39,7 @@ const AuthenticatedApp = ({ theme, onToggleTheme, onLogout }: AuthenticatedAppPr
   const portfolio = usePortfolio();
 
   const rows = portfolio.state[tracker];
-  const totals = useMemo(() => computeTotals(rows), [rows]);
+  const totals = useMemo(() => computeTotals(rows, tracker), [rows, tracker]);
 
   const applyLivePrices = useCallback(
     (priceById: Record<string, number>) => {

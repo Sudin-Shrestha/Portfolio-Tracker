@@ -859,6 +859,7 @@ code {
 
 @media (max-width: 860px) {
   .tx-summary-bar { grid-template-columns: 1fr 1fr; }
+  .tx-summary-actions { grid-column: 1 / -1; flex-direction: column; align-items: stretch; }
   .tx-add-button { grid-column: 1 / -1; }
   .tx-form-grid { grid-template-columns: 1fr; }
   .tx-filter-grid { grid-template-columns: 1fr 1fr; }
@@ -867,6 +868,132 @@ code {
   .tx-row { grid-template-columns: 36px 1fr auto; }
   .tx-row .icon-button { grid-row: 1; grid-column: 3; }
   .tx-amount { grid-column: 2; justify-self: end; }
+}
+
+/* ---------- Export menu ---------- */
+.tx-summary-actions {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.analytics-hero-actions {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.tx-export-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.tx-export-toggle {
+  white-space: nowrap;
+}
+
+.tx-export-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  min-width: 320px;
+  max-width: 360px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.35);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tx-export-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tx-export-row select {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+
+.tx-export-row select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+.tx-export-formats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tx-export-format {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.tx-export-format:hover {
+  border-color: var(--primary);
+}
+
+.tx-export-format.is-active {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.tx-export-format input {
+  margin-top: 3px;
+  accent-color: var(--primary);
+}
+
+.tx-export-format span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tx-export-format small {
+  font-size: 0.78rem;
+}
+
+.tx-export-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tx-export-toast {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-align: right;
+  margin-top: -6px;
+}
+
+@media (max-width: 860px) {
+  .tx-export-popover {
+    right: auto;
+    left: 0;
+    min-width: 280px;
+  }
+  .analytics-hero-actions { width: 100%; }
 }
 
 /* ---------- Analytics dashboard ---------- */

@@ -16,6 +16,7 @@ export interface RowMetrics {
   totalValue: number;
   pnl: number;
   pnlPercent: number;
+  fees: number;
 }
 
 export interface PortfolioTotals {
@@ -24,6 +25,7 @@ export interface PortfolioTotals {
   pnl: number;
   pnlPercent: number;
   positions: number;
+  fees: number;
 }
 
 export type Theme = 'light' | 'dark';

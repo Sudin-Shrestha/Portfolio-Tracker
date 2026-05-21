@@ -43,6 +43,7 @@ export const PortfolioTable = ({
             <th>Buy Price</th>
             <th>Current Price</th>
             {tracker === 'crypto' && <th>CoinGecko ID</th>}
+            {tracker === 'nepal' && <th className="num">Fees</th>}
             <th className="num">Total Value</th>
             <th className="num">P/L</th>
             <th className="num">P/L %</th>
@@ -51,8 +52,12 @@ export const PortfolioTable = ({
         </thead>
         <tbody>
           {rows.map((row) => {
-            const metrics = computeRowMetrics(row);
+            const metrics = computeRowMetrics(row, tracker);
             const positive = metrics.pnl >= 0;
+            const feesTitle =
+              tracker === 'nepal'
+                ? 'Broker commission + SEBON fee + DP charge (Rs 25)'
+                : undefined;
             return (
               <tr key={row.id}>
                 <td>
@@ -100,6 +105,11 @@ export const PortfolioTable = ({
                         onChange(row.id, { coingeckoId: event.target.value })
                       }
                     />
+                  </td>
+                )}
+                {tracker === 'nepal' && (
+                  <td className="num" title={feesTitle}>
+                    {currencyLabel} {formatNumber(metrics.fees)}
                   </td>
                 )}
                 <td className="num">
