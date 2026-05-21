@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(curl -s -D - \"https://www.coinspot.com.au/charts/latestprice?symbol=BTC\" -H \"Origin: http://localhost:5173\" -o /tmp/cs_body.json)",
-      "Bash(echo \"TYPECHECK EXIT: $?\")"
+      "Bash(echo \"TYPECHECK EXIT: $?\")",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code} | content-type: %{content_type}\\\\n\" \"https://nepsesmartsolution.com/coinspot/charts/latestprice?symbol=BTC\")",
+      "Bash(curl -s \"https://nepsesmartsolution.com/coinspot/charts/latestprice?symbol=BTC\")",
+      "Bash(curl -sI \"https://nepsesmartsolution.com/\")",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code} | content-type: %{content_type}\\\\n\" \"https://www.coinspot.com.au/charts/latestprice?symbol=BTC\")",
+      "Bash(curl -s \"https://www.coinspot.com.au/charts/latestprice?symbol=BTC\")"
     ]
   }
 }
