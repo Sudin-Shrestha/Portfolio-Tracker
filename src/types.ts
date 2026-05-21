@@ -50,7 +50,7 @@ export interface Candle {
   close: number;
 }
 
-export type CandleInterval = '15m' | '1h' | '4h' | '1d' | '1w';
+export type CandleInterval = '5m' | '15m' | '1h' | '4h' | '1d' | '1w';
 
 export interface SpotPrice {
   price: number;

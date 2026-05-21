@@ -1,21 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Candle } from '../types';
-
-const STREAK_THRESHOLD = 3;
+import { ZlmaSignal } from '../utils/zlmaTrend';
 
 type AlertDelivery = 'sent' | 'failed';
 
-interface AlertEvent {
-  candleTime?: number;
+interface SignalAlertEvent {
+  signalTime?: number;
+  type?: 'up' | 'dn';
   close?: number;
-  streak?: number;
   delivery: AlertDelivery;
   message: string;
 }
 
 interface AlertState {
-  lastAlert: AlertEvent | null;
-  lastTest: AlertEvent | null;
+  lastAlert: SignalAlertEvent | null;
+  lastTest: SignalAlertEvent | null;
 }
 
 type DesktopNotificationOptions = NotificationOptions & {
@@ -31,16 +29,11 @@ const getInitialPermission = (): NotificationPermission => {
   return Notification.permission;
 };
 
-export const useGreenCandleAlert = (
-  candles: Candle[],
-  enabled: boolean,
-  intervalMs: number,
-) => {
+// Fires a desktop notification the moment a ZLMA/EMA crossover (up = BUY) or
+// crossunder (dn = SELL) appears — the Pine signalUp/signalDn events, live.
+export const useZlmaSignalAlert = (signals: ZlmaSignal[], enabled: boolean) => {
   const [permission, setPermission] = useState<NotificationPermission>(getInitialPermission);
-  const [alertState, setAlertState] = useState<AlertState>({
-    lastAlert: null,
-    lastTest: null,
-  });
+  const [alertState, setAlertState] = useState<AlertState>({ lastAlert: null, lastTest: null });
   const lastNotifiedRef = useRef<number | null>(null);
 
   const hasNotificationApi = typeof window !== 'undefined' && 'Notification' in window;
@@ -53,7 +46,7 @@ export const useGreenCandleAlert = (
     : null;
 
   const showDesktopNotification = useCallback(
-    async (title: string, options: DesktopNotificationOptions): Promise<AlertEvent> => {
+    async (title: string, options: DesktopNotificationOptions): Promise<SignalAlertEvent> => {
       if (!supported) {
         return {
           delivery: 'failed',
@@ -62,37 +55,27 @@ export const useGreenCandleAlert = (
       }
       const currentPermission = hasNotificationApi ? Notification.permission : permission;
       if (currentPermission !== 'granted') {
-        return {
-          delivery: 'failed',
-          message: `Notification permission is ${currentPermission}.`,
-        };
+        return { delivery: 'failed', message: `Notification permission is ${currentPermission}.` };
       }
 
       if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
         try {
-          const registration = await navigator.serviceWorker.register('/notification-sw.js');
-          await navigator.serviceWorker.ready;
+          await navigator.serviceWorker.register('/notification-sw.js');
+          const registration = await navigator.serviceWorker.ready;
           await registration.showNotification(title, options);
-          return {
-            delivery: 'sent',
-            message: 'Desktop notification sent through the service worker.',
-          };
+          return { delivery: 'sent', message: 'Desktop notification sent through the service worker.' };
         } catch (err) {
-          console.warn('[gold-alert] Service worker notification failed:', err);
+          console.warn('[zlma-alert] Service worker notification failed:', err);
         }
       }
 
       try {
         const notification = new Notification(title, options);
         notification.onerror = (event) =>
-          console.warn('[gold-alert] Notification error event:', event);
-        notification.onshow = () => console.info('[gold-alert] Notification shown.');
-        return {
-          delivery: 'sent',
-          message: 'Desktop notification requested through the browser.',
-        };
+          console.warn('[zlma-alert] Notification error event:', event);
+        return { delivery: 'sent', message: 'Desktop notification requested through the browser.' };
       } catch (err) {
-        console.warn('[gold-alert] Notification constructor failed:', err);
+        console.warn('[zlma-alert] Notification constructor failed:', err);
         return {
           delivery: 'failed',
           message: `Browser blocked the desktop notification: ${getErrorMessage(err)}`,
@@ -102,51 +85,41 @@ export const useGreenCandleAlert = (
     [hasNotificationApi, permission, supported, unsupportedReason],
   );
 
-  const lastClosed = useMemo(() => {
-    const now = Date.now();
-    for (let i = candles.length - 1; i >= 0; i -= 1) {
-      if (candles[i].time + intervalMs <= now) return { candle: candles[i], index: i };
-    }
-    return null;
-  }, [candles, intervalMs]);
-
-  const streak = useMemo(() => {
-    if (!lastClosed) return 0;
-    let count = 0;
-    for (let i = lastClosed.index; i >= 0; i -= 1) {
-      if (candles[i].close > candles[i].open) count += 1;
-      else break;
-    }
-    return count;
-  }, [candles, lastClosed]);
+  // The most recent signal — including one forming on the live (not-yet-closed)
+  // candle, so the alert fires the moment a crossover is seen.
+  const latestSignal = useMemo(
+    () => (signals.length > 0 ? signals[signals.length - 1] : null),
+    [signals],
+  );
 
   useEffect(() => {
-    if (!enabled) {
-      lastNotifiedRef.current = null;
-    }
+    if (!enabled) lastNotifiedRef.current = null;
   }, [enabled]);
 
   useEffect(() => {
-    if (!enabled || permission !== 'granted' || !lastClosed) return;
-    if (streak < STREAK_THRESHOLD) return;
-    if (lastNotifiedRef.current === lastClosed.candle.time) return;
+    if (!enabled || permission !== 'granted' || !latestSignal) return;
+    if (lastNotifiedRef.current === latestSignal.time) return;
 
-    lastNotifiedRef.current = lastClosed.candle.time;
+    lastNotifiedRef.current = latestSignal.time;
+    const isUp = latestSignal.type === 'up';
 
     let cancelled = false;
-    void showDesktopNotification('Gold 15M - 3 green candles in a row', {
-      body: `${streak} consecutive green candles. Last close: USD ${lastClosed.candle.close.toFixed(2)}`,
-      tag: 'gold-green-streak',
-      requireInteraction: true,
-      timestamp: Date.now(),
-    }).then((result) => {
+    void showDesktopNotification(
+      isUp ? 'Gold 5M — BUY signal ▲' : 'Gold 5M — SELL signal ▼',
+      {
+        body: `${isUp ? 'ZLMA crossed above EMA (buy)' : 'ZLMA crossed below EMA (sell)'}. Price: USD ${latestSignal.close.toFixed(2)}`,
+        tag: 'gold-zlma-signal',
+        requireInteraction: true,
+        timestamp: Date.now(),
+      },
+    ).then((result) => {
       if (cancelled) return;
       setAlertState((prev) => ({
         ...prev,
         lastAlert: {
-          candleTime: lastClosed.candle.time,
-          close: lastClosed.candle.close,
-          streak,
+          signalTime: latestSignal.time,
+          type: latestSignal.type,
+          close: latestSignal.close,
           ...result,
         },
       }));
@@ -155,7 +128,7 @@ export const useGreenCandleAlert = (
     return () => {
       cancelled = true;
     };
-  }, [enabled, permission, streak, lastClosed, showDesktopNotification]);
+  }, [enabled, permission, latestSignal, showDesktopNotification]);
 
   const requestPermission = useCallback(async () => {
     if (!supported) return 'denied' as NotificationPermission;
@@ -165,20 +138,14 @@ export const useGreenCandleAlert = (
   }, [supported]);
 
   const sendTestNotification = useCallback(async () => {
-    const result = await showDesktopNotification('Gold alerts enabled', {
-      body: `You'll be pinged when 3 green 15M candles close in a row. Current streak: ${streak}.`,
-      tag: 'gold-test',
+    const result = await showDesktopNotification('Gold trend-signal alerts enabled', {
+      body: "You'll be pinged when ZLMA crosses EMA (up/down) on a closed 5M candle.",
+      tag: 'gold-zlma-test',
       requireInteraction: true,
       timestamp: Date.now(),
     });
-    setAlertState((prev) => ({
-      ...prev,
-      lastTest: {
-        streak,
-        ...result,
-      },
-    }));
-  }, [showDesktopNotification, streak]);
+    setAlertState((prev) => ({ ...prev, lastTest: result }));
+  }, [showDesktopNotification]);
 
   useEffect(() => {
     const refreshPermission = () => {
@@ -195,7 +162,7 @@ export const useGreenCandleAlert = (
   return {
     supported,
     permission,
-    streak,
+    lastSignal: latestSignal,
     lastAlert: alertState.lastAlert,
     lastTest: alertState.lastTest,
     unsupportedReason,

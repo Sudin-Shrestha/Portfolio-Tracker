@@ -1,8 +1,19 @@
 import { useMemo, useState } from 'react';
 import { Candle } from '../types';
+import { TrendBox, TrendDir, ZlmaSignal } from '../utils/zlmaTrend';
+
+export interface ChartOverlay {
+  zlma: number[];
+  ema: number[];
+  signals: ZlmaSignal[];
+  boxes: TrendBox[];
+  upColor: string;
+  dnColor: string;
+}
 
 interface CandlestickChartProps {
   candles: Candle[];
+  overlay?: ChartOverlay;
   width?: number;
   height?: number;
 }
@@ -25,6 +36,7 @@ const formatDateTime = (ts: number): string =>
 
 export const CandlestickChart = ({
   candles,
+  overlay,
   width = 960,
   height = 420,
 }: CandlestickChartProps) => {
@@ -35,8 +47,19 @@ export const CandlestickChart = ({
     const innerW = width - PADDING.left - PADDING.right;
     const innerH = height - PADDING.top - PADDING.bottom;
 
-    const min = Math.min(...candles.map((c) => c.low));
-    const max = Math.max(...candles.map((c) => c.high));
+    let min = Math.min(...candles.map((c) => c.low));
+    let max = Math.max(...candles.map((c) => c.high));
+    if (overlay) {
+      const extra = [
+        ...overlay.zlma,
+        ...overlay.ema,
+        ...overlay.boxes.flatMap((b) => [b.top, b.bottom]),
+      ].filter((v) => Number.isFinite(v));
+      if (extra.length) {
+        min = Math.min(min, ...extra);
+        max = Math.max(max, ...extra);
+      }
+    }
     const padPrice = (max - min) * 0.05 || 1;
     const yMin = min - padPrice;
     const yMax = max + padPrice;
@@ -45,9 +68,7 @@ export const CandlestickChart = ({
     const slot = innerW / candles.length;
     const bodyWidth = Math.max(2, Math.min(slot * 0.7, 14));
 
-    const yToPx = (price: number) =>
-      PADDING.top + ((yMax - price) / yRange) * innerH;
-
+    const yToPx = (price: number) => PADDING.top + ((yMax - price) / yRange) * innerH;
     const xToPx = (idx: number) => PADDING.left + slot * idx + slot / 2;
 
     const ticks = 5;
@@ -60,12 +81,88 @@ export const CandlestickChart = ({
       Math.min(candles.length - 1, Math.round(((candles.length - 1) * i) / 4)),
     );
 
-    return { innerW, innerH, yToPx, xToPx, slot, bodyWidth, yTicks, xTickIndices };
-  }, [candles, width, height]);
+    // --- Indicator overlay geometry -------------------------------------
+    let overlayGeom = null as null | {
+      bands: { color: string; d: string }[];
+      lines: { color: string; pts: string }[];
+      diamonds: { x: number; y: number; type: TrendDir }[];
+      boxes: { x: number; y: number; w: number; h: number; type: TrendDir; price: number }[];
+    };
+
+    if (overlay && overlay.zlma.length === candles.length) {
+      const { zlma, ema, upColor, dnColor } = overlay;
+      const colorOf = (dir: TrendDir) => (dir === 'up' ? upColor : dnColor);
+
+      // Contiguous runs where ZLMA stays on the same side of EMA.
+      const runs: { dir: TrendDir; start: number; end: number }[] = [];
+      for (let i = 0; i < candles.length; i += 1) {
+        const dir: TrendDir = zlma[i] >= ema[i] ? 'up' : 'dn';
+        const last = runs[runs.length - 1];
+        if (!last || last.dir !== dir) runs.push({ dir, start: i, end: i });
+        else last.end = i;
+      }
+
+      const bands = runs.map((run) => {
+        const top: string[] = [];
+        const bottom: string[] = [];
+        for (let i = run.start; i <= run.end; i += 1) {
+          top.push(`${xToPx(i)},${yToPx(zlma[i])}`);
+          bottom.push(`${xToPx(i)},${yToPx(ema[i])}`);
+        }
+        bottom.reverse();
+        return { color: colorOf(run.dir), d: `M${[...top, ...bottom].join(' L')} Z` };
+      });
+
+      const lineRun = (series: number[], run: { dir: TrendDir; start: number; end: number }) => {
+        const from = run.start > 0 ? run.start - 1 : run.start; // connect across colour change
+        const pts: string[] = [];
+        for (let i = from; i <= run.end; i += 1) pts.push(`${xToPx(i)},${yToPx(series[i])}`);
+        return { color: colorOf(run.dir), pts: pts.join(' ') };
+      };
+      const lines = [
+        ...runs.map((r) => lineRun(ema, r)),
+        ...runs.map((r) => lineRun(zlma, r)),
+      ];
+
+      const diamonds = overlay.signals.map((s) => ({
+        x: xToPx(s.index),
+        y: yToPx(zlma[s.index]),
+        type: s.type,
+      }));
+
+      const boxes = overlay.boxes.map((b) => {
+        const x = xToPx(b.startIndex) - slot / 2;
+        const right = xToPx(b.endIndex) + slot / 2;
+        return {
+          x,
+          y: yToPx(b.top),
+          w: Math.max(1, right - x),
+          h: Math.max(1, yToPx(b.bottom) - yToPx(b.top)),
+          type: b.type,
+          price: b.price,
+        };
+      });
+
+      overlayGeom = { bands, lines, diamonds, boxes };
+    }
+
+    return {
+      innerW,
+      innerH,
+      yToPx,
+      xToPx,
+      slot,
+      bodyWidth,
+      yTicks,
+      xTickIndices,
+      overlayGeom,
+    };
+  }, [candles, width, height, overlay]);
 
   if (!chart) return null;
 
   const hovered = hoverIndex !== null ? candles[hoverIndex] : null;
+  const geom = chart.overlayGeom;
 
   return (
     <div className="candle-chart-wrap">
@@ -74,7 +171,7 @@ export const CandlestickChart = ({
         preserveAspectRatio="none"
         className="candle-chart"
         role="img"
-        aria-label="XAU/USD candlestick chart"
+        aria-label="XAU/USD candlestick chart with Zero-Lag MA trend levels"
         onMouseLeave={() => setHoverIndex(null)}
       >
         {chart.yTicks.map((tick, i) => (
@@ -107,6 +204,32 @@ export const CandlestickChart = ({
           >
             {formatDate(candles[idx].time)}
           </text>
+        ))}
+
+        {/* Trend-level boxes sit behind the candles. */}
+        {geom?.boxes.map((b, i) => (
+          <g key={`box-${i}`}>
+            <rect
+              x={b.x}
+              y={b.y}
+              width={b.w}
+              height={b.h}
+              fill={b.type === 'up' ? overlay!.upColor : overlay!.dnColor}
+              fillOpacity={0.1}
+              stroke={b.type === 'up' ? overlay!.upColor : overlay!.dnColor}
+              strokeOpacity={0.4}
+              strokeWidth={1}
+            />
+            <text
+              x={b.x + b.w - 4}
+              y={b.y + 12}
+              textAnchor="end"
+              className="candle-axis"
+              fill={b.type === 'up' ? overlay!.upColor : overlay!.dnColor}
+            >
+              {formatPrice(b.price)}
+            </text>
+          </g>
         ))}
 
         {candles.map((c, idx) => {
@@ -142,6 +265,33 @@ export const CandlestickChart = ({
                 className="candle-body"
               />
             </g>
+          );
+        })}
+
+        {/* ZLMA / EMA band fill + lines on top of candles. */}
+        {geom?.bands.map((band, i) => (
+          <path key={`band-${i}`} d={band.d} fill={band.color} fillOpacity={0.12} stroke="none" />
+        ))}
+        {geom?.lines.map((line, i) => (
+          <polyline
+            key={`line-${i}`}
+            points={line.pts}
+            fill="none"
+            stroke={line.color}
+            strokeWidth={1.5}
+            strokeLinejoin="round"
+          />
+        ))}
+        {geom?.diamonds.map((d, i) => {
+          const s = 5;
+          return (
+            <polygon
+              key={`sig-${i}`}
+              points={`${d.x},${d.y - s} ${d.x + s},${d.y} ${d.x},${d.y + s} ${d.x - s},${d.y}`}
+              fill={d.type === 'up' ? overlay!.upColor : overlay!.dnColor}
+              stroke="var(--surface)"
+              strokeWidth={1}
+            />
           );
         })}
 
