@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { PortfolioRow } from '../types';
-import { fetchPrices, resolveCoinId } from '../utils/coingecko';
+import { fetchCoinSpotPrices, resolveSymbol } from '../utils/coinspot';
 
 interface RefreshResult {
   updated: number;
@@ -26,22 +26,23 @@ export const useCryptoPrices = (
   const refresh = useCallback(async (): Promise<RefreshResult> => {
     setMeta((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      const idMap = new Map<string, string>();
+      const symbolMap = new Map<string, string>();
       for (const row of cryptoRows) {
-        const id = resolveCoinId(row.asset, row.coingeckoId);
-        if (id) idMap.set(row.id, id);
+        // CoinSpot keys on the ticker (BTC, ETH, ...), which is the asset name.
+        const symbol = resolveSymbol(row.asset);
+        if (symbol) symbolMap.set(row.id, symbol);
       }
 
-      if (idMap.size === 0) {
+      if (symbolMap.size === 0) {
         setMeta({ loading: false, lastUpdated: Date.now(), error: null });
         return { updated: 0, skipped: cryptoRows.length };
       }
 
-      const prices = await fetchPrices(Array.from(new Set(idMap.values())));
+      const prices = await fetchCoinSpotPrices(Array.from(new Set(symbolMap.values())));
       const next: Record<string, number> = {};
       let updated = 0;
-      idMap.forEach((coinId, rowId) => {
-        const price = prices[coinId];
+      symbolMap.forEach((symbol, rowId) => {
+        const price = prices[symbol];
         if (typeof price === 'number') {
           next[rowId] = price;
           updated += 1;

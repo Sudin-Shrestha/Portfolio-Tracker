@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -D - \"https://www.coinspot.com.au/charts/latestprice?symbol=BTC\" -H \"Origin: http://localhost:5173\" -o /tmp/cs_body.json)",
+      "Bash(echo \"TYPECHECK EXIT: $?\")"
+    ]
+  }
+}

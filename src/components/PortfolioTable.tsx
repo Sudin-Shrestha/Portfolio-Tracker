@@ -42,7 +42,6 @@ export const PortfolioTable = ({
             <th>Quantity</th>
             <th>Buy Price</th>
             <th>Current Price</th>
-            {tracker === 'crypto' && <th>CoinGecko ID</th>}
             {tracker === 'nepal' && <th className="num">Fees</th>}
             <th className="num">Total Value</th>
             <th className="num">P/L</th>
@@ -95,18 +94,6 @@ export const PortfolioTable = ({
                     onChange={handleNumber(row.id, 'currentPrice')}
                   />
                 </td>
-                {tracker === 'crypto' && (
-                  <td>
-                    <input
-                      type="text"
-                      placeholder="bitcoin"
-                      value={row.coingeckoId ?? ''}
-                      onChange={(event) =>
-                        onChange(row.id, { coingeckoId: event.target.value })
-                      }
-                    />
-                  </td>
-                )}
                 {tracker === 'nepal' && (
                   <td className="num" title={feesTitle}>
                     {currencyLabel} {formatNumber(metrics.fees)}

@@ -6,7 +6,6 @@ export interface PortfolioRow {
   quantity: number;
   buyPrice: number;
   currentPrice: number;
-  coingeckoId?: string;
 }
 
 export type PortfolioState = Record<TrackerType, PortfolioRow[]>;

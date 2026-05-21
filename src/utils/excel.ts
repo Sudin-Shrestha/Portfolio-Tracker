@@ -14,7 +14,6 @@ const HEADERS = [
   'Current Price',
   'Total Value',
   'Profit/Loss',
-  'CoinGecko ID',
 ] as const;
 
 const toRowRecord = (row: PortfolioRow) => {
@@ -27,7 +26,6 @@ const toRowRecord = (row: PortfolioRow) => {
     'Current Price': row.currentPrice,
     'Total Value': Number(totalValue.toFixed(4)),
     'Profit/Loss': Number(pnl.toFixed(4)),
-    'CoinGecko ID': row.coingeckoId ?? '',
   };
 };
 
@@ -51,15 +49,12 @@ const parseSheet = (sheet: XLSX.WorkSheet, tracker: TrackerType): PortfolioRow[]
       pickField(raw, 'Asset Name', 'Asset', 'Coin', 'Stock', 'Name', 'Ticker') ?? '',
     ).trim();
     if (!asset) return;
-    const coingeckoId =
-      String(pickField(raw, 'CoinGecko ID', 'coingeckoId') ?? '').trim() || undefined;
     rows.push({
       id: `${tracker}-${Date.now()}-${index}`,
       asset,
       quantity: toNumber(pickField(raw, 'Quantity', 'Qty')),
       buyPrice: toNumber(pickField(raw, 'Buy Price', 'Avg Cost', 'Cost')),
       currentPrice: toNumber(pickField(raw, 'Current Price', 'Price', 'Market Price')),
-      coingeckoId,
     });
   });
   return rows;
@@ -98,7 +93,7 @@ export const buildWorkbook = (state: PortfolioState): XLSX.WorkBook => {
         ? XLSX.utils.json_to_sheet(records, { header: [...HEADERS] })
         : XLSX.utils.aoa_to_sheet([[...HEADERS]]);
     sheet['!cols'] = HEADERS.map((header) => ({
-      wch: header === 'Asset Name' ? 22 : header === 'CoinGecko ID' ? 18 : 14,
+      wch: header === 'Asset Name' ? 22 : 14,
     }));
     XLSX.utils.book_append_sheet(workbook, sheet, SHEET_NAMES[tracker]);
   });
@@ -123,7 +118,6 @@ export const sampleState: PortfolioState = {
       quantity: 0.35,
       buyPrice: 48000,
       currentPrice: 70500,
-      coingeckoId: 'bitcoin',
     },
     {
       id: 'crypto-sample-2',
@@ -131,7 +125,6 @@ export const sampleState: PortfolioState = {
       quantity: 1.8,
       buyPrice: 2475,
       currentPrice: 4800,
-      coingeckoId: 'ethereum',
     },
     {
       id: 'crypto-sample-3',
@@ -139,7 +132,6 @@ export const sampleState: PortfolioState = {
       quantity: 14,
       buyPrice: 132,
       currentPrice: 217,
-      coingeckoId: 'solana',
     },
   ],
   nepal: [
